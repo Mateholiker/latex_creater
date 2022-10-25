@@ -6,8 +6,10 @@ use super::{LatexLines, LatexResult, Tikz, ToLatex};
 
 #[derive(From, Clone)]
 pub enum LatexPart {
+    #[from]
     Tikz(Tikz),
     Frame(Vec<LatexPart>),
+    Center(Vec<LatexPart>),
 }
 
 pub struct FullPartIter<'p> {
@@ -34,7 +36,7 @@ impl LatexPart {
     ) -> Option<impl Iterator<Item = &LatexPart> + DoubleEndedIterator> {
         match self {
             LatexPart::Tikz(_) => None,
-            LatexPart::Frame(inner) => Some(inner.iter()),
+            LatexPart::Center(inner) | LatexPart::Frame(inner) => Some(inner.iter()),
         }
     }
 
@@ -49,24 +51,32 @@ impl ToLatex for LatexPart {
     fn export(&self) -> LatexResult<LatexLines> {
         match self {
             LatexPart::Tikz(tikz) => tikz.export(),
-            LatexPart::Frame(inner) => {
-                let mut lines = Vec::new();
-
-                let line = r"\begin{frame}";
-                lines.push(line.to_owned().into());
-                for inner in inner {
-                    let mut inner_lines = inner.export()?;
-                    for mut inner_line in inner_lines.drain(..) {
-                        inner_line.indentation += 1;
-                        lines.push(inner_line)
-                    }
-                }
-
-                let line = r"\end{frame}";
-                lines.push(line.to_owned().into());
-
-                Ok(lines.into())
-            }
+            LatexPart::Frame(inner) => wrap(
+                r"\begin{frame}".to_owned(),
+                r"\end{frame}".to_owned(),
+                inner,
+            ),
+            LatexPart::Center(inner) => wrap(
+                r"\begin{center}".to_owned(),
+                r"\end{center}".to_owned(),
+                inner,
+            ),
         }
     }
+}
+
+fn wrap(start: String, end: String, inner: &[LatexPart]) -> LatexResult<LatexLines> {
+    let mut lines = Vec::new();
+    lines.push(start.into());
+    for inner in inner {
+        let mut inner_lines = inner.export()?;
+        for mut inner_line in inner_lines.drain(..) {
+            inner_line.indentation += 1;
+            lines.push(inner_line)
+        }
+    }
+
+    lines.push(end.into());
+
+    Ok(lines.into())
 }

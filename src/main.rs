@@ -24,9 +24,10 @@ fn main() {
         .point(30, 12.6)
         .point(0, 12.6);
 
-    let tikz = Tikz::new().part(poly).option(TikzOption::Scale(0.5));
+    let tikz = Tikz::new().part(poly).option(TikzOption::Scale(0.3));
 
-    let frame = LatexPart::Frame(vec![tikz.into()]);
+    let center = LatexPart::Center(vec![tikz.into()]);
+    let frame = LatexPart::Frame(vec![center]);
 
     let latex = Latex::new(DocumentClass::Beamer).part(frame);
 
