@@ -10,7 +10,7 @@ mod node;
 pub use node::{Node, NodeOptions};
 
 mod line;
-pub use line::{Line, LineOptions};
+pub use line::{Line, LineOption};
 
 mod polygon;
 pub use polygon::{Polygon, PolygonOption};

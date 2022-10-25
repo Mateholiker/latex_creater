@@ -59,7 +59,7 @@ impl ToLatex for Polygon {
                 for point in points {
                     write!(&mut latex, " {} --", point.export()?)?;
                 }
-                writeln!(&mut latex, " cycle;")?;
+                write!(&mut latex, " cycle;")?;
             }
         }
 

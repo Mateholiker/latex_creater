@@ -7,7 +7,7 @@ use std::ops::{Deref, DerefMut};
 mod tikz;
 use derive_more::From;
 pub use tikz::{
-    AddOption, AddPoint, AddPointByParts, Color, Line, LineOptions, Node, NodeOptions, Polygon,
+    AddOption, AddPoint, AddPointByParts, Color, Line, LineOption, Node, NodeOptions, Polygon,
     PolygonOption, Tikz, TikzError, TikzOption, TikzPart,
 };
 
@@ -43,7 +43,7 @@ impl Latex {
     }
 }
 
-#[derive(From)]
+#[derive(From, Debug)]
 pub struct LatexLines {
     pub lines: Vec<LatexLine>,
 }
@@ -64,15 +64,26 @@ impl DerefMut for LatexLines {
 
 impl Display for LatexLines {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        for LatexLine {
+        if let Some(LatexLine {
             indentation,
             line_content,
-        } in self.lines.iter()
-        {
+        }) = self.lines.first() {
             for _ in 0..*indentation {
                 write!(f, "\t")?;
             }
-            writeln!(f, "{}", line_content)?;
+            write!(f, "{}", line_content)?;
+        }
+
+        for LatexLine {
+            indentation,
+            line_content,
+        } in self.lines.iter().skip(1)
+        {
+            writeln!(f)?;
+            for _ in 0..*indentation {
+                write!(f, "\t")?;
+            }
+            write!(f, "{}", line_content)?;
         }
         Ok(())
     }

@@ -14,7 +14,7 @@ pub use color::Color;
 
 mod tikz_part;
 pub use tikz_part::{
-    Line, LineOptions, Node, NodeOptions, Polygon, PolygonOption, TikzPart, Visible,
+    Line, LineOption, Node, NodeOptions, Polygon, PolygonOption, TikzPart, Visible,
 };
 
 #[derive(Default, Clone)]
@@ -49,12 +49,12 @@ impl Tikz {
 impl ToLatex for Tikz {
     fn export(&self) -> LatexResult<LatexLines> {
         let mut first_line = String::new();
-        write!(&mut first_line, "\\begin{{tikzpicture}}[")?;
+        write!(&mut first_line, r"\begin{{tikzpicture}}[")?;
         for option in self.options.iter() {
             write!(&mut first_line, "{}", option.export()?)?;
         }
         first_line.push(']');
-        let last_line = "\\end{tikzpicture}".to_owned();
+        let last_line = r"\end{tikzpicture}".to_owned();
 
         let mut lines = Vec::new();
 
