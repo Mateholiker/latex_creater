@@ -1,5 +1,5 @@
 use super::{AddOption, AddPoint, AddPointByParts, Color, TikzError};
-use crate::latex::{LatexLine, LatexLines, LatexResult, ToLatex};
+use crate::latex::{LatexLines, LatexResult, ToLatex};
 use derive_more::From;
 use simple_math::Vec2;
 use std::collections::HashSet;

@@ -1,5 +1,5 @@
 pub use super::{LatexLine, LatexLines, LatexResult, ToLatex};
-use derive_more::From;
+
 use simple_math::Vec2;
 use std::collections::HashSet;
 use std::fmt::Write;

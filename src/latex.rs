@@ -1,9 +1,8 @@
 use lazy_static::lazy_static;
 use std::collections::HashSet;
-use std::fmt::{write, Display, Formatter, Result as FmtResult, Write as FmtWrite};
-use std::hash::{Hash, Hasher};
-use std::io::Write;
-use std::mem::discriminant;
+use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::hash::Hash;
+
 use std::ops::{Deref, DerefMut};
 mod tikz;
 use derive_more::From;

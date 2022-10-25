@@ -5,7 +5,7 @@ use std::{fs::File, process::Command};
 
 use simple_math::Vec2;
 
-use super::{LatexError, LatexLine, LatexLines, LatexResult};
+use super::{LatexError, LatexLines, LatexResult};
 
 pub trait ToLatex {
     fn export(&self) -> LatexResult<LatexLines>;

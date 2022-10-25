@@ -3,7 +3,7 @@ use std::io::Error as IOError;
 
 use derive_more::From;
 
-use super::{LatexLine, TikzError};
+use super::TikzError;
 
 pub type LatexResult<T> = Result<T, LatexError>;
 

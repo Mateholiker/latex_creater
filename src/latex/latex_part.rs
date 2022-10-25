@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use derive_more::From;
 
-use super::{Latex, LatexLines, LatexResult, Tikz, ToLatex};
+use super::{LatexLines, LatexResult, Tikz, ToLatex};
 
 #[derive(From, Clone)]
 pub enum LatexPart {

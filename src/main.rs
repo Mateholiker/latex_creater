@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(irrefutable_let_patterns)]
 //#![allow(unused_variables)]
-#![allow(unused_imports)]
+//#![allow(unused_imports)]
 #![allow(unreachable_patterns)]
 #![feature(exit_status_error)]
 
