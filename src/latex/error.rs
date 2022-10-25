@@ -3,9 +3,9 @@ use std::io::Error as IOError;
 
 use derive_more::From;
 
-use super::TikzError;
+use super::{LatexLine, TikzError};
 
-pub type LatexResult = Result<String, LatexError>;
+pub type LatexResult<T> = Result<T, LatexError>;
 
 #[derive(From, Debug)]
 pub enum LatexError {

@@ -5,10 +5,10 @@ use std::{fs::File, process::Command};
 
 use simple_math::Vec2;
 
-use super::{LatexError, LatexResult};
+use super::{LatexError, LatexLine, LatexLines, LatexResult};
 
 pub trait ToLatex {
-    fn export(&self) -> LatexResult;
+    fn export(&self) -> LatexResult<LatexLines>;
 
     fn write_and_compile(&self, path: &Path) -> Result<Output, LatexError> {
         let mut file = File::create(path)?;
@@ -27,7 +27,7 @@ pub trait ToLatex {
 }
 
 impl ToLatex for Vec2 {
-    fn export(&self) -> LatexResult {
-        Ok(format!("({}, {})", self.x(), self.y()))
+    fn export(&self) -> LatexResult<LatexLines> {
+        Ok(vec![format!("({}, {})", self.x(), self.y())].into())
     }
 }

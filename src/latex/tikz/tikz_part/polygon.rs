@@ -1,5 +1,5 @@
 use super::{AddOption, AddPoint, AddPointByParts, Color, TikzError};
-use crate::latex::{LatexResult, ToLatex};
+use crate::latex::{LatexLine, LatexLines, LatexResult, ToLatex};
 use derive_more::From;
 use simple_math::Vec2;
 use std::collections::HashSet;
@@ -45,7 +45,7 @@ impl<T: Into<PolygonOption>> AddOption<T> for Polygon {
 }
 
 impl ToLatex for Polygon {
-    fn export(&self) -> LatexResult {
+    fn export(&self) -> LatexResult<LatexLines> {
         let mut latex = String::new();
         write!(&mut latex, "\\fill[")?;
         for option in self.options.iter() {
@@ -63,7 +63,7 @@ impl ToLatex for Polygon {
             }
         }
 
-        Ok(latex)
+        Ok(vec![latex].into())
     }
 }
 
@@ -73,9 +73,9 @@ pub enum PolygonOption {
 }
 
 impl ToLatex for PolygonOption {
-    fn export(&self) -> LatexResult {
+    fn export(&self) -> LatexResult<LatexLines> {
         match self {
-            PolygonOption::Color(color) => Ok(format!("color={}", color.name())),
+            PolygonOption::Color(color) => Ok(vec![format!("color={}", color.name())].into()),
         }
     }
 }

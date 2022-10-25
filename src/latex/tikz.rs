@@ -1,4 +1,4 @@
-use super::{LatexResult, ToLatex};
+pub use super::{LatexLine, LatexLines, LatexResult, ToLatex};
 use derive_more::From;
 use simple_math::Vec2;
 use std::collections::HashSet;
@@ -6,20 +6,16 @@ use std::fmt::Write;
 use std::hash::{Hash, Hasher};
 use std::mem::discriminant;
 
-mod node;
-pub use node::{Node, NodeOptions};
-
-mod line;
-pub use line::{Line, LineOptions};
-
-mod polygon;
-pub use polygon::{Polygon, PolygonOption};
-
 mod error;
 pub use error::TikzError;
 
 mod color;
 pub use color::Color;
+
+mod tikz_part;
+pub use tikz_part::{
+    Line, LineOptions, Node, NodeOptions, Polygon, PolygonOption, TikzPart, Visible,
+};
 
 #[derive(Default, Clone)]
 pub struct Tikz {
@@ -42,63 +38,37 @@ impl Tikz {
         self
     }
 
-    pub fn get_color_definitions(&self) -> LatexResult {
-        let mut latex = String::new();
-        for color in self.parts.iter().filter_map(|part| part.get_color()) {
-            let name = color.name();
-            let r = color.r as f32 / 255.0;
-            let g = color.g as f32 / 255.0;
-            let b = color.b as f32 / 255.0;
-            writeln!(
-                &mut latex,
-                "\\definecolor{{{name}}}{{rgb}}{{{r}, {g}, {b}}}"
-            )?;
-        }
-        Ok(latex)
+    pub fn get_colors(&self) -> HashSet<Color> {
+        self.parts
+            .iter()
+            .flat_map(|part| part.get_colors())
+            .collect()
     }
 }
 
 impl ToLatex for Tikz {
-    fn export(&self) -> LatexResult {
-        let mut latex = String::new();
-        write!(&mut latex, "\\begin{{tikzpicture}}[")?;
+    fn export(&self) -> LatexResult<LatexLines> {
+        let mut first_line = String::new();
+        write!(&mut first_line, "\\begin{{tikzpicture}}[")?;
         for option in self.options.iter() {
-            write!(&mut latex, "{}", option.export()?)?;
+            write!(&mut first_line, "{}", option.export()?)?;
         }
-        writeln!(&mut latex, "]")?;
+        first_line.push(']');
+        let last_line = "\\end{tikzpicture}".to_owned();
 
+        let mut lines = Vec::new();
+
+        lines.push(first_line.into());
         for part in self.parts.iter() {
-            write!(&mut latex, "\t{}", part.export()?)?;
+            let mut part_lines = part.export()?;
+            for mut line in part_lines.drain(..) {
+                line.indentation += 1;
+                lines.push(line);
+            }
         }
-        writeln!(&mut latex, "\\end{{tikzpicture}}")?;
-        Ok(latex)
-    }
-}
 
-#[derive(From, Clone)]
-pub enum TikzPart {
-    Node(Node),
-    Line(Line),
-    Polygon(Polygon),
-}
-
-impl TikzPart {
-    fn get_color(&self) -> Option<Color> {
-        match self {
-            TikzPart::Node(_) => todo!(),
-            TikzPart::Line(_) => todo!(),
-            TikzPart::Polygon(polygon) => polygon.get_color(),
-        }
-    }
-}
-
-impl ToLatex for TikzPart {
-    fn export(&self) -> LatexResult {
-        match self {
-            TikzPart::Node(_) => todo!(),
-            TikzPart::Line(_) => todo!(),
-            TikzPart::Polygon(polygon) => polygon.export(),
-        }
+        lines.push(last_line.into());
+        Ok(lines.into())
     }
 }
 
@@ -108,11 +78,11 @@ pub enum TikzOption {
 }
 
 impl ToLatex for TikzOption {
-    fn export(&self) -> LatexResult {
+    fn export(&self) -> LatexResult<LatexLines> {
         match self {
             TikzOption::Scale(scale) => {
                 if scale.is_finite() {
-                    Ok(format!("scale={scale}"))
+                    Ok(vec![format!("scale={scale}")].into())
                 } else {
                     Err(TikzError::NotFiniteFloat.into())
                 }

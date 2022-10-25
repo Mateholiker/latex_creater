@@ -1,5 +1,10 @@
+use lazy_static::lazy_static;
 use std::collections::HashSet;
-use std::fmt::Write;
+use std::fmt::{write, Display, Formatter, Result as FmtResult, Write as FmtWrite};
+use std::hash::{Hash, Hasher};
+use std::io::Write;
+use std::mem::discriminant;
+use std::ops::{Deref, DerefMut};
 mod tikz;
 use derive_more::From;
 pub use tikz::{
@@ -13,111 +18,172 @@ pub use error::{LatexError, LatexResult};
 mod to_latex;
 pub use to_latex::ToLatex;
 
-#[derive(Default)]
+mod latex_part;
+pub use latex_part::LatexPart;
+
+lazy_static! {
+    static ref EMPTY_VEC: Vec<LatexPart> = Vec::with_capacity(0);
+}
+
 pub struct Latex {
+    document_class: DocumentClass,
     parts: Vec<LatexPart>,
-    options: HashSet<LatexOption>,
 }
 
 impl Latex {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(document_class: DocumentClass) -> Self {
+        Latex {
+            document_class,
+            parts: Vec::new(),
+        }
     }
 
     pub fn part(mut self, part: impl Into<LatexPart>) -> Self {
         self.parts.push(part.into());
         self
     }
+}
 
-    pub fn option(mut self, option: impl Into<LatexOption>) -> Self {
-        self.options.insert(option.into());
-        self
+#[derive(From)]
+pub struct LatexLines {
+    pub lines: Vec<LatexLine>,
+}
+
+impl Deref for LatexLines {
+    type Target = Vec<LatexLine>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.lines
+    }
+}
+
+impl DerefMut for LatexLines {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.lines
+    }
+}
+
+impl Display for LatexLines {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        for LatexLine {
+            indentation,
+            line_content,
+        } in self.lines.iter()
+        {
+            for _ in 0..*indentation {
+                write!(f, "\t")?;
+            }
+            writeln!(f, "{}", line_content)?;
+        }
+        Ok(())
+    }
+}
+
+impl From<Vec<String>> for LatexLines {
+    fn from(mut lines: Vec<String>) -> Self {
+        LatexLines {
+            lines: lines.drain(..).map(|l| l.into()).collect(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct LatexLine {
+    pub indentation: usize,
+    pub line_content: String,
+}
+
+impl From<String> for LatexLine {
+    fn from(line_content: String) -> Self {
+        LatexLine {
+            indentation: 0,
+            line_content,
+        }
+    }
+}
+
+impl Display for LatexLine {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        for _ in 0..self.indentation {
+            write!(f, "\t")?;
+        }
+        write!(f, "{}", self.line_content)
     }
 }
 
 impl ToLatex for Latex {
-    fn export(&self) -> LatexResult {
-        let mut latex = String::new();
-        let mut indentation_level = 0;
+    fn export(&self) -> LatexResult<LatexLines> {
+        let mut lines = Vec::new();
 
-        //beginning
-        if self.options.contains(&LatexOption::FullDokument) {
-            writeln!(&mut latex, "\\documentclass[10pt]{{article}}")?;
-            writeln!(&mut latex, "\\usepackage[utf8] {{inputenc}}")?;
-            if self
-                .parts
-                .iter()
-                .any(|part| matches!(part, LatexPart::Tikz(_)))
-            {
-                writeln!(&mut latex, "\\usepackage{{tikz}}")?;
-                writeln!(&mut latex, "\\usepackage{{pgfplots}}")?;
-                writeln!(&mut latex, "\\usetikzlibrary{{external}}")?;
-                writeln!(&mut latex, "\\usepackage{{color}}")?;
-                writeln!(
-                    &mut latex,
-                    "\\usetikzlibrary{{arrows ,automata ,positioning, shapes.misc}}"
-                )?;
-                writeln!(&mut latex)?;
-            }
-            indentation_level += 1;
+        let first_line = self.document_class.get_document_class_line();
+        lines.push(first_line.into());
+        let input_line = r"\usepackage[utf8] {inputenc}";
+        lines.push(input_line.to_owned().into());
 
-            let mut colors = String::new();
-            for tikz in self.parts.iter().filter_map(|part| match part {
-                LatexPart::Tikz(tikz) => Some(tikz),
-                _ => None,
-            }) {
-                write!(&mut colors, "{}", tikz.get_color_definitions()?)?;
-            }
-            writeln!(&mut latex, "{}", colors)?;
+        if self
+            .parts
+            .iter()
+            .flat_map(|part| part.iter_full())
+            .any(|part| matches!(part, LatexPart::Tikz(_)))
+        {
+            //the tikz base package
+            let line = r"\usepackage{tikz}";
+            lines.push(line.to_owned().into());
 
-            writeln!(&mut latex, "\\begin{{document}}")?;
+            let line = r"\usepackage{pgfplots}";
+            lines.push(line.to_owned().into());
+
+            //makes compiling faster by incremental tikz compiling
+            let line = r"\usetikzlibrary{external}";
+            lines.push(line.to_owned().into());
+            let line = r"\usepackage{color}";
+            lines.push(line.to_owned().into());
+            let line = r"\usetikzlibrary{arrows ,automata ,positioning, shapes.misc}";
+            lines.push(line.to_owned().into());
         }
 
-        //mid
-        for part in self.parts.iter() {
-            let string = part.export()?;
-            let mut indented_string = String::new();
-            for _ in 0..indentation_level {
-                indented_string.push('\t');
-            }
-            for char in string.chars() {
-                match char {
-                    '\n' => {
-                        indented_string.push('\n');
-                        for _ in 0..indentation_level {
-                            indented_string.push('\t');
-                        }
-                    }
-                    other => indented_string.push(other),
+        //get all colors
+        let mut colors = HashSet::new();
+        for part in self.parts.iter().flat_map(|part| part.iter_full()) {
+            if let LatexPart::Tikz(tikz) = part {
+                for color in tikz.get_colors() {
+                    colors.insert(color);
                 }
             }
-            writeln!(&mut latex, "{}", indented_string.trim_end_matches('\t'))?;
+        }
+        for color in colors {
+            lines.push(color.get_color_definitions());
         }
 
-        //end
-        latex.pop();
-        if self.options.contains(&LatexOption::FullDokument) {
-            writeln!(&mut latex, "\\end{{document}}")?;
+        let line = r"\begin{document}";
+        lines.push(line.to_owned().into());
+
+        for part in self.parts.iter() {
+            let mut part_lines = part.export()?;
+            for mut part_line in part_lines.drain(..) {
+                part_line.indentation += 1;
+                lines.push(part_line)
+            }
         }
 
-        Ok(latex)
+        let last_line = r"\end{document}";
+        lines.push(last_line.to_owned().into());
+
+        Ok(lines.into())
     }
 }
 
-#[derive(From, Clone)]
-pub enum LatexPart {
-    Tikz(Tikz),
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DocumentClass {
+    Article,
+    Beamer,
 }
 
-impl ToLatex for LatexPart {
-    fn export(&self) -> LatexResult {
+impl DocumentClass {
+    fn get_document_class_line(&self) -> String {
         match self {
-            LatexPart::Tikz(tikz) => tikz.export(),
+            DocumentClass::Article => "\\documentclass[10pt]{article}".to_owned(),
+            DocumentClass::Beamer => "\\documentclass{beamer}".to_owned(),
         }
     }
-}
-
-#[derive(PartialEq, Eq, Hash)]
-pub enum LatexOption {
-    FullDokument,
 }

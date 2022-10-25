@@ -1,3 +1,5 @@
+use crate::latex::LatexLine;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Color {
     pub r: u8,
@@ -8,6 +10,15 @@ pub struct Color {
 impl Color {
     pub fn name(&self) -> String {
         format!("0x{:0>2x}{:0>2x}{:0>2x}", self.r, self.g, self.b)
+    }
+
+    pub fn get_color_definitions(&self) -> LatexLine {
+        let name = self.name();
+        let r = self.r as f32 / 255.0;
+        let g = self.g as f32 / 255.0;
+        let b = self.b as f32 / 255.0;
+
+        format!("\\definecolor{{{name}}}{{rgb}}{{{r}, {g}, {b}}}").into()
     }
 }
 

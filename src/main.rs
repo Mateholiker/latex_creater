@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 #![allow(irrefutable_let_patterns)]
 //#![allow(unused_variables)]
-//#![allow(unused_imports)]
+#![allow(unused_imports)]
 #![allow(unreachable_patterns)]
 #![feature(exit_status_error)]
 
 mod latex;
 use std::{path::Path, str::from_utf8};
 
-use latex::{AddOption, AddPointByParts, Color, Latex, LatexOption, Polygon, Tikz};
+use latex::{AddOption, AddPointByParts, Color, DocumentClass, Latex, LatexPart, Polygon, Tikz};
 
 use crate::latex::{TikzOption, ToLatex};
 
@@ -26,11 +26,13 @@ fn main() {
 
     let tikz = Tikz::new().part(poly).option(TikzOption::Scale(0.5));
 
-    let latex = Latex::new().part(tikz).option(LatexOption::FullDokument);
+    let frame = LatexPart::Frame(vec![tikz.into()]);
 
-    //println!("{}", latex.export().unwrap());
+    let latex = Latex::new(DocumentClass::Beamer).part(frame);
+
     let output = latex.write_and_compile(Path::new("test/test.tex")).unwrap();
     if output.status.exit_ok().is_err() {
-        println!("{}", from_utf8(&output.stdout).unwrap())
+        println!("{}\n\n\n", from_utf8(&output.stdout).unwrap());
+        println!("{}", latex.export().unwrap());
     }
 }

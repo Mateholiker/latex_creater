@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 simple_math = {path = "dep/simple_math"}
 derive_more = "0.99.17"
+lazy_static = "1.4.0"
