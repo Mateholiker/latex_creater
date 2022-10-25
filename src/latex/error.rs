@@ -1,4 +1,5 @@
 use std::fmt::Error as FmtError;
+use std::io::Error as IOError;
 
 use derive_more::From;
 
@@ -10,4 +11,6 @@ pub type LatexResult = Result<String, LatexError>;
 pub enum LatexError {
     Formatting(FmtError),
     Tikz(TikzError),
+    IO(IOError),
+    PathIsNoFile,
 }

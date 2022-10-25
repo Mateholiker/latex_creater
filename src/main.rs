@@ -3,8 +3,11 @@
 //#![allow(unused_variables)]
 //#![allow(unused_imports)]
 #![allow(unreachable_patterns)]
+#![feature(exit_status_error)]
 
 mod latex;
+use std::{path::Path, str::from_utf8};
+
 use latex::{AddOption, AddPointByParts, Color, Latex, LatexOption, Polygon, Tikz};
 
 use crate::latex::{TikzOption, ToLatex};
@@ -25,5 +28,9 @@ fn main() {
 
     let latex = Latex::new().part(tikz).option(LatexOption::FullDokument);
 
-    println!("{}", latex.export().unwrap());
+    //println!("{}", latex.export().unwrap());
+    let output = latex.write_and_compile(Path::new("test/test.tex")).unwrap();
+    if output.status.exit_ok().is_err() {
+        println!("{}", from_utf8(&output.stdout).unwrap())
+    }
 }
